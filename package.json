@@ -1,11 +1,16 @@
 {
   "name": "php-interface-definition",
-  "displayName": "php interface definition",
+  "publisher": "palaso0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/palaso0/php-interface-definition.git"
+  },
+  "displayName": "PHP Interface Implementations",
   "description": "",
   "icon": "assets/extension-icon.png",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
