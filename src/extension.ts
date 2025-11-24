@@ -1,131 +1,149 @@
-
-import * as vscode from 'vscode';
-
+import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext) {
+  const disposable = vscode.commands.registerCommand(
+    "php-interface-definition.goToImplementations",
+    async (uri?: vscode.Uri, position?: vscode.Position) => {
+      let document: vscode.TextDocument;
+      let range: vscode.Range | undefined;
 
-	console.log('Congratulations, your extension "php-interface-definition" is now active!');
+      if (uri && position) {
+        document = await vscode.workspace.openTextDocument(uri);
+        range = document.getWordRangeAtPosition(position);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          return;
+        }
+        document = editor.document;
+        position = editor.selection.active;
+        range = document.getWordRangeAtPosition(position);
+      }
 
-	const disposable = vscode.commands.registerCommand('php-interface-definition.goToImplementations', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
+      if (!range || !position) {
+        vscode.window.showInformationMessage("No interface selected.");
+        return;
+      }
 
-		const document = editor.document;
-		const position = editor.selection.active;
-		const wordRange = document.getWordRangeAtPosition(position);
-		if (!wordRange) {
-			vscode.window.showInformationMessage('No interface selected.');
-			return;
-		}
+      const interfaceName = document.getText(range);
 
-		const interfaceName = document.getText(wordRange);
+      try {
+        const references = await vscode.commands.executeCommand<vscode.Location[]>(
+          "vscode.executeReferenceProvider",
+          document.uri,
+          position
+        );
 
-		vscode.window.withProgress({
-			location: vscode.ProgressLocation.Notification,
-			title: `Searching for implementations of ${interfaceName}...`,
-			cancellable: true
-		}, async (progress, token) => {
-			
-			try {
-				const references = await vscode.commands.executeCommand<vscode.Location[]>(
-					'vscode.executeReferenceProvider',
-					document.uri,
-					position
-				);
+        if (!references || references.length === 0) {
+          vscode.window.setStatusBarMessage(`No references found for ${interfaceName}.`, 3000);
+          return;
+        }
 
-				if (!references || references.length === 0) {
-					vscode.window.showInformationMessage(`No references found for ${interfaceName}.`);
-					return;
-				}
+        const matches: { uri: vscode.Uri; line: number; className: string }[] = [];
+        const regex = new RegExp(
+          `class\\s+(\\w+)[^{]*implements\\s+[^{]*\\b${interfaceName}\\b`,
+          "i"
+        );
 
-				const matches: { uri: vscode.Uri; line: number; className: string }[] = [];
-				const regex = new RegExp(`class\\s+(\\w+)[^{]*implements\\s+[^{]*\\b${interfaceName}\\b`, 'i');
+        for (const reference of references) {
+          let doc: vscode.TextDocument;
+          try {
+            doc = await vscode.workspace.openTextDocument(reference.uri);
+          } catch (error) {
+            continue;
+          }
 
-				for (const ref of references) {
-					if (token.isCancellationRequested) {
-						break;
-					}
+          const lineText = doc.lineAt(reference.range.start.line).text;
+          const match = regex.exec(lineText);
 
+          if (match) {
+            matches.push({
+              uri: reference.uri,
+              line: reference.range.start.line,
+              className: match[1],
+            });
+          }
+        }
 
-					let doc: vscode.TextDocument;
-					try {
-						doc = await vscode.workspace.openTextDocument(ref.uri);
-					} catch (e) {
-						continue;
-					}
+        if (matches.length === 0) {
+          vscode.window.setStatusBarMessage(`No implementations found for ${interfaceName}.`, 3000);
+        } else if (matches.length === 1) {
+          const match = matches[0];
+          const doc = await vscode.workspace.openTextDocument(match.uri);
+          await vscode.window.showTextDocument(doc, {
+            selection: new vscode.Range(match.line, 0, match.line, 0),
+          });
+        } else {
+          const uniqueMatches = matches.filter(
+            (currentMatch, currentIndex, allMatches) =>
+              allMatches.findIndex(
+                (comparisonMatch) =>
+                  comparisonMatch.uri.toString() === currentMatch.uri.toString() &&
+                  comparisonMatch.line === currentMatch.line
+              ) === currentIndex
+          );
 
-					const lineText = doc.lineAt(ref.range.start.line).text;
-					const match = regex.exec(lineText);
+          const items = uniqueMatches.map((match) => ({
+            label: match.className,
+            description: vscode.workspace.asRelativePath(match.uri),
+            match: match,
+          }));
 
-					if (match) {
-						matches.push({
-							uri: ref.uri,
-							line: ref.range.start.line,
-							className: match[1]
-						});
-					}
-				}
+          const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: `Select implementation of ${interfaceName}`,
+          });
 
-				if (matches.length === 0) {
-					vscode.window.showInformationMessage(`No implementations found for ${interfaceName}.`);
-				} else if (matches.length === 1) {
-					const match = matches[0];
-					const doc = await vscode.workspace.openTextDocument(match.uri);
-					await vscode.window.showTextDocument(doc, { selection: new vscode.Range(match.line, 0, match.line, 0) });
-				} else {
+          if (selected) {
+            const match = selected.match;
+            const doc = await vscode.workspace.openTextDocument(match.uri);
+            await vscode.window.showTextDocument(doc, {
+              selection: new vscode.Range(match.line, 0, match.line, 0),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error finding implementations:", error);
+        vscode.window.showErrorMessage("Error finding implementations.");
+      }
+    }
+  );
 
-					const uniqueMatches = matches.filter((v, i, a) => a.findIndex(t => t.uri.toString() === v.uri.toString() && t.line === v.line) === i);
+  context.subscriptions.push(disposable);
 
-					const items = uniqueMatches.map(m => ({
-						label: m.className,
-						description: vscode.workspace.asRelativePath(m.uri),
-						match: m
-					}));
+  const codeLensProvider = new (class implements vscode.CodeLensProvider {
+    provideCodeLenses(
+      document: vscode.TextDocument,
+      token: vscode.CancellationToken
+    ): vscode.CodeLens[] {
+      const codeLenses: vscode.CodeLens[] = [];
+      const text = document.getText();
+      const regex = /interface\s+(\w+)/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const startPos = document.positionAt(match.index);
+        const line = document.lineAt(startPos.line);
+        const indexOfName = match[0].indexOf(match[1]);
+        const namePos = document.positionAt(match.index + indexOfName);
 
-					const selected = await vscode.window.showQuickPick(items, {
-						placeHolder: `Select implementation of ${interfaceName}`
-					});
+        const range = new vscode.Range(
+          startPos,
+          new vscode.Position(startPos.line, line.text.length)
+        );
 
-					if (selected) {
-						const match = selected.match;
-						const doc = await vscode.workspace.openTextDocument(match.uri);
-						await vscode.window.showTextDocument(doc, { selection: new vscode.Range(match.line, 0, match.line, 0) });
-					}
-				}
+        const command: vscode.Command = {
+          title: "$(symbol-interface) Go to Implementations",
+          command: "php-interface-definition.goToImplementations",
+          arguments: [document.uri, namePos],
+        };
+        codeLenses.push(new vscode.CodeLens(range, command));
+      }
+      return codeLenses;
+    }
+  })();
 
-			} catch (err) {
-				console.error('Error finding implementations:', err);
-				vscode.window.showErrorMessage('Error finding implementations.');
-			}
-		});
-	});
-
-	context.subscriptions.push(disposable);
-
-
-	vscode.window.onDidChangeTextEditorSelection(event => {
-		const editor = event.textEditor;
-		if (editor.document.languageId !== 'php') {
-			return;
-		}
-
-		const position = editor.selection.active;
-		const wordRange = editor.document.getWordRangeAtPosition(position);
-		
-		let isValid = false;
-		if (wordRange) {
-			const word = editor.document.getText(wordRange);
-
-			if (/^[A-Z]/.test(word)) {
-				isValid = true;
-			}
-		}
-
-		vscode.commands.executeCommand('setContext', 'php-interface-definition.isValidSymbol', isValid);
-	}, null, context.subscriptions);
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider({ language: "php", scheme: "file" }, codeLensProvider)
+  );
 }
-
 
 export function deactivate() {}

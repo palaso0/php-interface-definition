@@ -23,16 +23,7 @@
         "command": "php-interface-definition.goToImplementations",
         "title": "Go to Implementations"
       }
-    ],
-    "menus": {
-      "editor/context": [
-        {
-          "command": "php-interface-definition.goToImplementations",
-          "when": "editorLangId == php && php-interface-definition.isValidSymbol",
-          "group": "navigation"
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
