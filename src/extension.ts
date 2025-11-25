@@ -27,6 +27,33 @@ export function activate(context: vscode.ExtensionContext) {
 
       const interfaceName = document.getText(range);
 
+      const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { match?: any }>();
+      quickPick.title = `Searching implementations for ${interfaceName}...`;
+      quickPick.placeholder = "Please wait, searching...";
+      quickPick.busy = true;
+      
+      const searchingItem = { label: "$(sync~spin) Searching...", alwaysShow: true };
+      quickPick.items = [searchingItem];
+
+      let isClosed = false;
+      quickPick.onDidHide(() => {
+        isClosed = true;
+      });
+
+      quickPick.show();
+
+      quickPick.onDidAccept(async () => {
+        const selected = quickPick.selectedItems[0];
+        if (selected && selected.match) {
+          quickPick.hide();
+          const match = selected.match;
+          const doc = await vscode.workspace.openTextDocument(match.uri);
+          await vscode.window.showTextDocument(doc, {
+            selection: new vscode.Range(match.line, 0, match.line, 0),
+          });
+        }
+      });
+
       try {
         const references = await vscode.commands.executeCommand<vscode.Location[]>(
           "vscode.executeReferenceProvider",
@@ -35,6 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         if (!references || references.length === 0) {
+          quickPick.hide();
           vscode.window.setStatusBarMessage(`No references found for ${interfaceName}.`, 3000);
           return;
         }
@@ -46,6 +74,10 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         for (const reference of references) {
+          if (isClosed) {
+            return;
+          }
+
           let doc: vscode.TextDocument;
           try {
             doc = await vscode.workspace.openTextDocument(reference.uri);
@@ -57,52 +89,53 @@ export function activate(context: vscode.ExtensionContext) {
           const match = regex.exec(lineText);
 
           if (match) {
-            matches.push({
+            const matchData = {
               uri: reference.uri,
               line: reference.range.start.line,
               className: match[1],
-            });
+            };
+
+            const isDuplicate = matches.some(
+              (m) =>
+                m.uri.toString() === matchData.uri.toString() && m.line === matchData.line
+            );
+
+            if (!isDuplicate) {
+              matches.push(matchData);
+              const items = matches.map((m) => ({
+                label: m.className,
+                description: vscode.workspace.asRelativePath(m.uri),
+                match: m,
+              }));
+              quickPick.items = [...items, searchingItem];
+            }
           }
         }
 
+        quickPick.busy = false;
+        quickPick.placeholder = "Select an implementation";
+        
+        quickPick.items = matches.map((m) => ({
+            label: m.className,
+            description: vscode.workspace.asRelativePath(m.uri),
+            match: m,
+        }));
+
         if (matches.length === 0) {
+          quickPick.hide();
           vscode.window.setStatusBarMessage(`No implementations found for ${interfaceName}.`, 3000);
         } else if (matches.length === 1) {
+          // Auto-open if only one result found
+          quickPick.hide();
           const match = matches[0];
           const doc = await vscode.workspace.openTextDocument(match.uri);
           await vscode.window.showTextDocument(doc, {
             selection: new vscode.Range(match.line, 0, match.line, 0),
           });
-        } else {
-          const uniqueMatches = matches.filter(
-            (currentMatch, currentIndex, allMatches) =>
-              allMatches.findIndex(
-                (comparisonMatch) =>
-                  comparisonMatch.uri.toString() === currentMatch.uri.toString() &&
-                  comparisonMatch.line === currentMatch.line
-              ) === currentIndex
-          );
-
-          const items = uniqueMatches.map((match) => ({
-            label: match.className,
-            description: vscode.workspace.asRelativePath(match.uri),
-            match: match,
-          }));
-
-          const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: `Select implementation of ${interfaceName}`,
-          });
-
-          if (selected) {
-            const match = selected.match;
-            const doc = await vscode.workspace.openTextDocument(match.uri);
-            await vscode.window.showTextDocument(doc, {
-              selection: new vscode.Range(match.line, 0, match.line, 0),
-            });
-          }
         }
       } catch (error) {
         console.error("Error finding implementations:", error);
+        quickPick.hide();
         vscode.window.showErrorMessage("Error finding implementations.");
       }
     }
