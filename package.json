@@ -8,9 +8,9 @@
   "displayName": "PHP Interface Implementations",
   "description": "",
   "icon": "assets/extension-icon.png",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
@@ -27,7 +27,7 @@
       },
       {
         "command": "php-interface-definition.goToImplementations",
-        "title": "Go to Implementations"
+        "title": "Go to Implementation"
       }
     ]
   },
@@ -40,7 +40,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.100.0",
+    "@types/vscode": "^1.90.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "typescript-eslint": "^8.46.3",

@@ -55,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         const command: vscode.Command = {
-          title: "$(symbol-interface) Go to Implementations",
+          title: "$(symbol-interface) Go to Implementation",
           command: "php-interface-definition.goToImplementations",
           arguments: [document.uri, namePos],
         };
@@ -83,7 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
              const interfaceNamePos = document.positionAt(lastInterfaceMatch.index + indexOfInterfaceName);
 
              const command: vscode.Command = {
-                title: "$(symbol-method) Go to Implementations",
+                title: "$(symbol-method) Go to Implementation",
                 command: "php-interface-definition.goToImplementations",
                 arguments: [document.uri, interfaceNamePos, methodName],
              };
