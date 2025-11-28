@@ -4,7 +4,7 @@ Navigate to implementations of PHP interfaces directly from the definition.
 
 ## Features
 
-![Go to Implementations](assets/ImplementationsImage.png)
+![Go to Implementations](https://github.com/palaso0/php-interface-definition/raw/main/assets/ImplementationsImage.png)
 
 ### Go to Implementation CodeLens
 

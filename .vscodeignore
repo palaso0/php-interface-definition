@@ -9,3 +9,5 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+assets/ImplementationsImage.png
+assets/extension-icon.svg
