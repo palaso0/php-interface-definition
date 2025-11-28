@@ -39,10 +39,10 @@ export function activate(context: vscode.ExtensionContext) {
     ): vscode.CodeLens[] {
       const codeLenses: vscode.CodeLens[] = [];
       const text = document.getText();
-      
+
       const interfaceRegex = /interface\s+(\w+)/g;
       let interfaceMatch;
-      
+
       while ((interfaceMatch = interfaceRegex.exec(text)) !== null) {
         const startPos = document.positionAt(interfaceMatch.index);
         const line = document.lineAt(startPos.line);
@@ -65,30 +65,30 @@ export function activate(context: vscode.ExtensionContext) {
       const methodRegex = /public\s+function\s+(\w+)|function\s+(\w+)/g;
       let methodMatch;
       while ((methodMatch = methodRegex.exec(text)) !== null) {
-         const methodName = methodMatch[1] || methodMatch[2];
-         const startPos = document.positionAt(methodMatch.index);
-         const line = document.lineAt(startPos.line);
-         
-         const range = new vscode.Range(
-            startPos,
-            new vscode.Position(startPos.line, line.text.length)
-         );
+        const methodName = methodMatch[1] || methodMatch[2];
+        const startPos = document.positionAt(methodMatch.index);
+        const line = document.lineAt(startPos.line);
 
-         const precedingText = text.substring(0, methodMatch.index);
-         const lastInterfaceMatch = [...precedingText.matchAll(/interface\s+(\w+)/g)].pop();
-         
-         if (lastInterfaceMatch && lastInterfaceMatch.index !== undefined) {
-             const interfaceName = lastInterfaceMatch[1];
-             const indexOfInterfaceName = lastInterfaceMatch[0].indexOf(interfaceName);
-             const interfaceNamePos = document.positionAt(lastInterfaceMatch.index + indexOfInterfaceName);
+        const range = new vscode.Range(
+          startPos,
+          new vscode.Position(startPos.line, line.text.length)
+        );
 
-             const command: vscode.Command = {
-                title: "$(symbol-method) Go to Implementation",
-                command: "php-interface-definition.goToImplementations",
-                arguments: [document.uri, interfaceNamePos, methodName],
-             };
-             codeLenses.push(new vscode.CodeLens(range, command));
-         }
+        const precedingText = text.substring(0, methodMatch.index);
+        const lastInterfaceMatch = [...precedingText.matchAll(/interface\s+(\w+)/g)].pop();
+
+        if (lastInterfaceMatch && lastInterfaceMatch.index !== undefined) {
+          const interfaceName = lastInterfaceMatch[1];
+          const indexOfInterfaceName = lastInterfaceMatch[0].indexOf(interfaceName);
+          const interfaceNamePos = document.positionAt(lastInterfaceMatch.index + indexOfInterfaceName);
+
+          const command: vscode.Command = {
+            title: "$(symbol-method) Go to Implementation",
+            command: "php-interface-definition.goToImplementations",
+            arguments: [document.uri, interfaceNamePos, methodName],
+          };
+          codeLenses.push(new vscode.CodeLens(range, command));
+        }
       }
 
       return codeLenses;
@@ -106,7 +106,7 @@ async function findImplementations(
   position: vscode.Position,
   methodName?: string
 ) {
-  const title = methodName 
+  const title = methodName
     ? `Searching implementations for ${interfaceName}::${methodName}...`
     : `Searching implementations for ${interfaceName}...`;
 
@@ -176,16 +176,16 @@ async function findImplementations(
         let className = match[1];
 
         if (methodName) {
-            const text = doc.getText();
-            const methodRegex = new RegExp(`function\\s+\\b${methodName}\\b`, 'g');
-            const methodMatches = [...text.matchAll(methodRegex)];
-            
-            const classDefOffset = doc.offsetAt(new vscode.Position(matchLine, 0));
-            const validMethodMatch = methodMatches.find(match => match.index !== undefined && match.index > classDefOffset);
-            
-            if (validMethodMatch && validMethodMatch.index !== undefined) {
-                matchLine = doc.positionAt(validMethodMatch.index).line;
-            }
+          const text = doc.getText();
+          const methodRegex = new RegExp(`function\\s+\\b${methodName}\\b`, 'g');
+          const methodMatches = [...text.matchAll(methodRegex)];
+
+          const classDefOffset = doc.offsetAt(new vscode.Position(matchLine, 0));
+          const validMethodMatch = methodMatches.find(match => match.index !== undefined && match.index > classDefOffset);
+
+          if (validMethodMatch && validMethodMatch.index !== undefined) {
+            matchLine = doc.positionAt(validMethodMatch.index).line;
+          }
         }
 
         const matchData = {
@@ -238,4 +238,4 @@ async function findImplementations(
   }
 }
 
-export function deactivate() {}
+export function deactivate() { }

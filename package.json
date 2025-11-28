@@ -8,7 +8,7 @@
   "displayName": "PHP Interface Implementations",
   "description": "",
   "icon": "assets/extension-icon.png",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.90.0"
   },
