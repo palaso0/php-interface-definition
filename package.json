@@ -6,14 +6,24 @@
     "url": "https://github.com/palaso0/php-interface-definition.git"
   },
   "displayName": "PHP Interface Implementations",
-  "description": "",
+  "description": "Navigate to PHP interface and method implementations",
   "icon": "assets/extension-icon.png",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
+  ],
+  "keywords": [
+    "php",
+    "interface",
+    "implementation",
+    "navigation",
+    "codelens",
+    "productivity",
+    "method"
   ],
   "activationEvents": [
     "onLanguage:php"
